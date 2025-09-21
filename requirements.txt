@@ -1,0 +1,5 @@
+Flask>=2.3
+plotly>=5.16
+yfinance>=0.2
+pandas>=1.5
+pytest>=7.4

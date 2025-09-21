@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Correlation Heatmap Builder</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background-color: #f5f7fa;
+      }
+
+      body {
+        margin: 0;
+        color: #1f2933;
+        background: linear-gradient(180deg, #f5f7fa 0%, #ffffff 40%);
+      }
+
+      header {
+        background: #111827;
+        color: #f9fafb;
+        padding: 2.5rem 1.5rem 2rem;
+        text-align: center;
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: clamp(2rem, 4vw, 2.8rem);
+        letter-spacing: -0.02em;
+      }
+
+      header p {
+        max-width: 720px;
+        margin: 1rem auto 0;
+        line-height: 1.6;
+        color: rgba(249, 250, 251, 0.85);
+        font-size: 1.05rem;
+      }
+
+      main {
+        max-width: 1080px;
+        margin: -3rem auto 3rem;
+        padding: 0 1.5rem;
+      }
+
+      .card {
+        background: #ffffff;
+        box-shadow: 0 15px 45px rgba(15, 23, 42, 0.08);
+        border-radius: 18px;
+        padding: clamp(1.5rem, 2vw, 2.5rem);
+        margin-bottom: 2rem;
+      }
+
+      form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 1.25rem;
+        align-items: end;
+      }
+
+      .field label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: 0.4rem;
+        color: #111827;
+      }
+
+      .field input,
+      .field select,
+      .field textarea {
+        width: 100%;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        padding: 0.75rem 0.85rem;
+        font-size: 1rem;
+        font-family: inherit;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .field input:focus,
+      .field select:focus,
+      .field textarea:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+        outline: none;
+      }
+
+      textarea {
+        min-height: 3.2rem;
+        resize: vertical;
+      }
+
+      button[type="submit"] {
+        padding: 0.85rem 1.4rem;
+        border: none;
+        border-radius: 12px;
+        background: linear-gradient(135deg, #2563eb, #7c3aed);
+        color: #f8fafc;
+        font-size: 1rem;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 12px 24px rgba(37, 99, 235, 0.25);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      button[type="submit"]:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 16px 30px rgba(67, 56, 202, 0.35);
+      }
+
+      button[type="submit"]:focus {
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3);
+      }
+
+      .error {
+        border-left: 5px solid #dc2626;
+        color: #991b1b;
+        background: rgba(254, 226, 226, 0.8);
+      }
+
+      .error p {
+        margin: 0;
+        font-weight: 600;
+      }
+
+      .status {
+        margin: 0 0 1.5rem;
+        font-weight: 600;
+        color: #2563eb;
+      }
+
+      #heatmap {
+        width: 100%;
+        min-height: 440px;
+      }
+
+      .table-wrapper {
+        overflow-x: auto;
+        margin-top: 1.5rem;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+
+      th,
+      td {
+        padding: 0.65rem 0.75rem;
+        text-align: center;
+        border: 1px solid rgba(148, 163, 184, 0.4);
+      }
+
+      th {
+        background: rgba(37, 99, 235, 0.08);
+        font-weight: 700;
+      }
+
+      td:first-child,
+      th:first-child {
+        text-align: left;
+        font-weight: 600;
+        background: rgba(15, 23, 42, 0.05);
+      }
+
+      .matrix-value {
+        color: #0f172a;
+        font-variant-numeric: tabular-nums;
+      }
+
+      footer {
+        text-align: center;
+        color: #475569;
+        font-size: 0.95rem;
+        margin-top: 2rem;
+      }
+
+      footer a {
+        color: #2563eb;
+      }
+
+      @media (max-width: 640px) {
+        form {
+          grid-template-columns: 1fr;
+        }
+
+        button[type="submit"] {
+          width: 100%;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Correlation Heatmap Builder</h1>
+      <p>
+        Analyse how your favourite tickers move together. Enter the symbols you care
+        about, choose a period, and generate an interactive correlation heatmap based on
+        Yahoo Finance daily closes.
+      </p>
+    </header>
+    <main>
+      <section class="card">
+        <form method="post" novalidate>
+          <div class="field" style="grid-column: span 2">
+            <label for="tickers">Tickers</label>
+            <textarea
+              id="tickers"
+              name="tickers"
+              placeholder="e.g. AAPL, MSFT, NVDA"
+              spellcheck="false"
+            >{{ form.tickers }}</textarea>
+            <small>Separate tickers with spaces, commas, or new lines.</small>
+          </div>
+          <div class="field">
+            <label for="start">Start date</label>
+            <input id="start" name="start" type="date" value="{{ form.start }}" />
+          </div>
+          <div class="field">
+            <label for="end">End date</label>
+            <input id="end" name="end" type="date" value="{{ form.end }}" />
+          </div>
+          <div class="field">
+            <label for="return_type">Return type</label>
+            <select id="return_type" name="return_type">
+              {% for option in return_types %}
+              <option value="{{ option }}" {% if form.return_type == option %}selected{% endif %}>
+                {{ option|upper }} returns
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="field" style="align-self: stretch">
+            <button type="submit">Build heatmap</button>
+          </div>
+        </form>
+      </section>
+
+      {% if error %}
+      <section class="card error">
+        <p>{{ error }}</p>
+      </section>
+      {% endif %}
+
+      {% if result %}
+      <section class="card">
+        <h2 style="margin-top: 0">Interactive correlation heatmap</h2>
+        {% if status_message %}
+        <p class="status">{{ status_message }}</p>
+        {% endif %}
+        <div id="heatmap" role="img" aria-label="Correlation heatmap"></div>
+        <div class="table-wrapper">
+          <table aria-label="Correlation matrix">
+            <thead>
+              <tr>
+                <th scope="col">Ticker</th>
+                {% for ticker in result.tickers %}
+                <th scope="col">{{ ticker }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for ticker, row in table_rows %}
+              <tr>
+                <th scope="row">{{ ticker }}</th>
+                {% for value in row %}
+                <td style="background: {{ correlation_to_hex(value) }}">
+                  <span class="matrix-value">{{ "%.2f"|format(value) }}</span>
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endif %}
+      <footer>
+        Data is pulled live from Yahoo Finance via the optional
+        <code>yfinance</code> dependency. Ensure it is installed to generate heatmaps.
+      </footer>
+    </main>
+    <script src="https://cdn.plot.ly/plotly-2.26.0.min.js" integrity="sha384-VDrNzs06ybsK4Ei5i2A5bGidxJR03Tsv1aGuaqrcozXxomlZtSFZQJUICzGy9/Tr" crossorigin="anonymous"></script>
+    {% if result %}
+    <script>
+      const tickers = {{ result.tickers | tojson }};
+      const matrix = {{ result.matrix | tojson }};
+      const colorscale = {{ color_scale | tojson }};
+
+      const heatmapData = [
+        {
+          z: matrix,
+          x: tickers,
+          y: tickers,
+          type: "heatmap",
+          colorscale: colorscale,
+          zmin: -1,
+          zmax: 1,
+          hovertemplate:
+            "<b>%{y}</b> vs <b>%{x}</b><br>Correlation: %{z:.2f}<extra></extra>",
+          colorbar: {
+            title: "Correlation",
+            titleside: "right",
+            ticksuffix: "",
+          },
+        },
+      ];
+
+      const layout = {
+        margin: { t: 10, r: 20, b: 40, l: 60 },
+        xaxis: {
+          side: "top",
+          tickfont: { size: 12 },
+        },
+        yaxis: {
+          autorange: "reversed",
+          tickfont: { size: 12 },
+        },
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: "rgba(0,0,0,0)",
+      };
+
+      const config = {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: [
+          "lasso2d",
+          "select2d",
+          "autoScale2d",
+          "toggleSpikelines",
+        ],
+      };
+
+      Plotly.newPlot("heatmap", heatmapData, layout, config);
+    </script>
+    {% endif %}
+  </body>
+</html>
